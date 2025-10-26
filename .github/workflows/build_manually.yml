@@ -1,0 +1,45 @@
+name: Manually Build Board
+
+on:
+  workflow_dispatch:
+    inputs:
+      board:
+        description: "Board"
+        required: true
+        default: "aipi-lite"
+      config:
+        description: "Config"
+        required: false
+        default: "config"
+        type: choice
+        options:
+          - config
+          - config_en
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ github.event.inputs.board }}
+    strategy:
+      fail-fast: false  # 单个变体失败不影响其它变体
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:release-v5.5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build current variant
+        shell: bash
+        run: |
+          source $IDF_PATH/export.sh
+          python scripts/release.py ${{ github.event.inputs.board }} --name ${{ github.event.inputs.board }} --config ${{ github.event.inputs.config }}.json
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiaozhi_${{ github.event.inputs.board }}_${{ github.sha }}.bin
+          path: build/merged-binary.bin
+          if-no-files-found: error
